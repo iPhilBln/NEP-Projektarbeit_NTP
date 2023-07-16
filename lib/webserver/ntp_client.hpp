@@ -14,6 +14,8 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
+
 
 #define NTP_TIMESTAMP_DELTA 2208988800ULL
 enum class TYPE {
@@ -34,8 +36,7 @@ private:
 
     const   uint8_t     _clientsCountMax = 20;
     static  uint16_t    _clientsCount;
-    static  std::vector<NTPClient> masters;
-    static  std::vector<NTPClient> slaves;
+
 
     bool init(void);
     void sendNTPRequest(void);
@@ -43,6 +44,9 @@ private:
     
     //bool    setIsClient(bool isClient);
 public:
+    static  std::vector<NTPClient> masters;
+    static  std::vector<NTPClient> slaves;
+    
     NTPClient(const char* serverName, const char* serverAddress, TYPE type, uint16_t serverPort = 123);
     ~NTPClient();
 
@@ -57,6 +61,8 @@ public:
     
     static String toJSONmaster(void);
     static String toJSONslave(void);
+
+
 };
 
 #endif

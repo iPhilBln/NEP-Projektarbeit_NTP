@@ -9,13 +9,14 @@ NTPClient::NTPClient(const char* serverName, const char* serverAddress, TYPE typ
         Serial.println("Initialize :" + String(serverName));
         if (_clientsCount < _clientsCountMax) {
             if (init()) {
+                Serial.println("\tIP-Adresse: " + String(_serverAddress));
                 _type == TYPE::MASTER ? masters.push_back(*this) : slaves.push_back(*this);
                 _clientsCount++;
                 _isClient = true;
                 getTimestamp();
             }
         }
-        getIsClient();
+        //getIsClient();
     }
 
 
@@ -29,9 +30,11 @@ bool NTPClient::getIsClient(void) {
 }
 
 void NTPClient::getTimestamp(void) {
+    init();
     sendNTPRequest();
     receiveNTPResponse();
-    Serial.println("Timestamp[f]: " + timeToString());
+    closeSocket();
+    Serial.println("\tTimestamp[f]: " + timeToString());
 }
 
 uint8_t NTPClient::getClientsCount(TYPE type) {
@@ -53,7 +56,7 @@ bool NTPClient::init(void) {
     // Socket erstellen
     _sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (_sockfd < 0) {
-        Serial.println("Fehler beim Erstellen des Sockets.");
+        Serial.println("\tFehler beim Erstellen des Sockets.");
         return false;
     }
 
@@ -61,19 +64,20 @@ bool NTPClient::init(void) {
     sockaddr_in serverAddr{};
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(_serverPort);
+    
     if (inet_pton(AF_INET, _serverAddress, &(serverAddr.sin_addr)) <= 0) {
-        Serial.println("Ungültige Server-Adresse.");
+        Serial.println("\tUngültige Server-Adresse.");
         close(_sockfd);
         return false;
     }
 
     // Socket mit Server verbinden (nicht notwendig für UDP)
-    //if (connect(_sockfd, reinterpret_cast<const sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0) {
-    //    Serial.println("Verbindung zum Server fehlgeschlagen.");
-    //    close(_sockfd);
-    //    return false;
-    //}
-    Serial.println(_sockfd);
+    if (connect(_sockfd, reinterpret_cast<const sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0) {
+        Serial.println("\tVerbindung zum Server fehlgeschlagen.");
+        close(_sockfd);
+        return false;
+    }
+    Serial.println("\tSocketnr.: " + String(_sockfd));
     return true;
 }
 
@@ -97,10 +101,10 @@ void NTPClient::sendNTPRequest(void) {
     serverAddr.sin_port = htons(_serverPort);
 
     if (sendto(_sockfd, packetBuffer, NTP_PACKET_SIZE, 0, reinterpret_cast<const sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0) {
-        Serial.println("Fehler beim Senden des NTP-Pakets.");
+        Serial.println("\tFehler beim Senden des NTP-Pakets.");
     }
     else {
-        Serial.println("Anfrage gesendet.");
+        Serial.println("\tAnfrage an " + String(_serverName) + " gesendet.");
     }    
 }
 
@@ -116,7 +120,7 @@ void NTPClient::receiveNTPResponse(void) {
     timeout.tv_sec = timeoutSeconds;
     timeout.tv_usec = 0;
     if (setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-        Serial.println("Fehler beim Festlegen des Sende-Timeouts.");
+        Serial.println("\tFehler beim Festlegen des Sende-Timeouts.");
         return;
     }
 
@@ -126,16 +130,17 @@ void NTPClient::receiveNTPResponse(void) {
 
     if (recvfrom(_sockfd, packetBuffer, NTP_PACKET_SIZE, 0, reinterpret_cast<sockaddr*>(&serverAddr), &serverAddrLen) < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            Serial.println("Timeout beim Empfangen der NTP-Antwort.");
+            Serial.println("\tTimeout beim Empfangen der NTP-Antwort.");
         } else {
-            Serial.println("Fehler beim Empfangen der NTP-Antwort.");
+            Serial.println("\tFehler beim Empfangen der NTP-Antwort.");
         }
         return;
     }
-
-    Serial.println("Antwort erhalten.");
-    // Auswertung der NTP-Antwort
-    setTimestamp(packetBuffer);
+    else {
+        Serial.println("\tAntwort erhalten.");
+        // Auswertung der NTP-Antwort
+        setTimestamp(packetBuffer);
+    }
 }
 
 
@@ -147,7 +152,7 @@ void NTPClient::closeSocket() {
 }
 
 String NTPClient::timeToString(void) {
-    Serial.print("Timestamp: "); Serial.println(_timestamp);
+    Serial.print("\tTimestamp: "); Serial.println(_timestamp);
 
     uint32_t seconds_helper = (_timestamp >> 32) & 0xFFFFFFFF;
     uint32_t fraction = _timestamp & 0xFFFFFFFF;

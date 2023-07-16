@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "wifi.hpp"
+#include "ntp_client.hpp"
 
 #define button 18
 
@@ -23,16 +24,15 @@ unsigned long timestamp = 0;
 void loop() {
   wifiProcess();
 /*
-  if (millis() - timestamp > 5000) {
+  if (millis() - timestamp > 10 * 1000) {
     timestamp = millis();
-    int paramCount = wifiGetParamCounter();
-    for (uint8_t i = 0; i < paramCount; i++) {
-      const char* param = wifiGetParamValue(i);
-      if (param != nullptr) 
-        Serial.println(param);
+    int memberCounter = NTPClient::getClientsCount();
+    for(NTPClient& client : NTPClient::masters) {
+        client.getTimestamp();
     }
     Serial.println();
   }
+
 */
   if (digitalRead(button) == LOW) {
     delay(500);
