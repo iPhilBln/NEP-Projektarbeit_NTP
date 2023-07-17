@@ -23,17 +23,20 @@ unsigned long timestamp = 0;
 
 void loop() {
   wifiProcess();
-/*
-  if (millis() - timestamp > 10 * 1000) {
+
+  if (millis() - timestamp > 1 * 1000) {
     timestamp = millis();
-    int memberCounter = NTPClient::getClientsCount();
-    for(NTPClient& client : NTPClient::masters) {
-        client.getTimestamp();
+    bool complete = false;
+    for(NTPClient* slave : NTPClient::slaves) {
+      if (! (complete = slave->setTimestampDifSlave())) break;
     }
-    Serial.println();
+    if (complete) {
+      Serial.println(NTPClient::toJSON());
+      Serial.println();
+    }
   }
 
-*/
+
   if (digitalRead(button) == LOW) {
     delay(500);
     ESP.restart();

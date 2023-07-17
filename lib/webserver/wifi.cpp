@@ -70,124 +70,278 @@ const char html_client_settings_body_end[] PROGMEM = R"(
 
 const char html_tu_berlin_unchecked[] PROGMEM = R"(<label for="tu_berlin_ip"><input type="checkbox" id="tu_berlin_ip" name="tu_berlin_ip" value="130.149.7.7"> <span class="checkbox-label">TU Berlin</span></label><br>)";
 const char html_tu_berlin_checked[] PROGMEM = R"(<label for="tu_berlin_ip"><input type="checkbox" id="tu_berlin_ip" name="tu_berlin_ip" value="130.149.7.7" checked> <span class="checkbox-label">TU Berlin</span></label><br>)";
-
-
-const char html_tu_dresden_unchecked[] PROGMEM = R"(<label for="tu_dresden_ip"><input type="checkbox" id="tu_dresden_ip" name="tu_dresden_ip" value="141.76.32.160"> <span class="checkbox-label">TU Dresden</span></label><br>)";
-const char html_tu_dresden_checked[] PROGMEM = R"(<label for="tu_dresden_ip"><input type="checkbox" id="tu_dresden_ip" name="tu_dresden_ip" value="141.76.32.160" checked> <span class="checkbox-label">TU Dresden</span></label><br>)";
+const char html_cloudflare_unchecked[] PROGMEM = R"(<label for="cloudflare_ip"><input type="checkbox" id="cloudflare_ip" name="cloudflare_ip" value="162.159.200.123"> <span class="checkbox-label">Cloudflare</span></label><br>)";
+const char html_cloudflare_checked[] PROGMEM = R"(<label for="cloudflare_ip"><input type="checkbox" id="cloudflare_ip" name="cloudflare_ip" value="162.159.200.123" checked> <span class="checkbox-label">Cloudflare</span></label><br>)";
 const char html_t_online_unchecked[] PROGMEM = R"(<label for="t_online_ip"><input type="checkbox" id="t_online_ip" name="t_online_ip" value="194.25.134.196"> <span class="checkbox-label">T-Online</span></label><br>)";
 const char html_t_online_checked[] PROGMEM = R"(<label for="t_online_ip"><input type="checkbox" id="t_online_ip" name="t_online_ip" value="194.25.134.196" checked> <span class="checkbox-label">T-Online</span></label><br>)";
 
 const char html_custom[] PROGMEM = R"(
     <br>
-    <label for="ntp_ip" style="color: white;">NTP Server -> IP Adresse:Port :</label>
+    <label for="custom_ntp" style="color: white;">NTP Server -> IP Adresse:Port :</label>
     <input type="text" id="custom_ntp_name" name="custom_ntp_name" placeholder="NTP Server Name">
     <input type="text" id="custom_ntp_ip" name="custom_ntp_ip" maxlength="15" placeholder="000.000.000.000" pattern="^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$">
     <input type="text" id="custom_ntp_port" name="custom_ntp_port" maxlength="5" placeholder="123" pattern="[0-9]+" value="123" required>
     <br>
 )";
 
-const char html_client_settings_param_saved[] PROGMEM = "<div class='msg S'>Saved<br/></div>";
+//const char html_client_settings_param_saved[] PROGMEM = "<div class='msg S'>Saved<br/></div>";
+const char html_client_settings_param_saved[] PROGMEM = "<div class='msg S' style='background-color: #5cb85c;'>Saved<br/></div>";
+
+
+const char html_clients[] PROGMEM = R"(
+    <body>
+        <h2>Master</h2>
+        <table id="master-table">
+            <colgroup>
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+            </colgroup>
+            <tr>
+                <th>Server</th>
+                <th>Zeitstempel</th>
+                <th>RTT</th>
+                <th></th>
+            </tr>
+            <tr id="master-data-row">
+                <td id="master-name-cell"></td>
+                <td id="master-time-cell"></td>
+                <td id="master-rtt-cell"></td>
+                <td id="master-cell-4"></td>
+            </tr>
+        </table>
+
+        <h2>Slave</h2>
+        <table id="slave-table">
+            <colgroup>
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+            </colgroup>
+            <tr>
+                <th>Server</th>
+                <th>Zeitstempel</th>
+                <th>RTT</th>
+                <th>Zeitdifferenz</th>
+            </tr>
+        </table>
+
+        <style>
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th, td {
+                padding: 8px;
+                text-align: center;
+                word-wrap: break-word;
+            }
+            th {
+                background-color: #000000;
+                color: #ffffff;  // Textfarbe auf Weiß ändern
+            }
+        </style>
+
+        <script>
+            function updateTable() {
+                fetch('/getntpjson')
+                    .then(response => response.json())
+                    .then(data => {
+                        let masterData = data[0].master[0];
+                        let slaveData = data[1].slave;
+
+                        // Aktualisieren Sie die Tabelle für den Master
+                        let masterNameCell = document.getElementById('master-name-cell');
+                        let masterTimeCell = document.getElementById('master-time-cell');
+                        let masterRttCell = document.getElementById('master-rtt-cell');
+                        let masterCell4 = document.getElementById('master-cell-4');
+                        masterNameCell.innerHTML = masterData.name;
+                        masterTimeCell.innerHTML = masterData.time;
+                        masterRttCell.innerHTML = masterData.t_rtt;
+                        masterCell4.innerHTML = ''; 
+
+                        // Aktualisieren Sie die Tabelle für die Slaves
+                        let slaveTable = document.getElementById('slave-table');
+                        slaveTable.innerHTML = '';  // Tabelle leeren
+
+                        slaveData.forEach((slave, index) => {
+                            let slaveRow = slaveTable.insertRow(index + 1);
+                            let slaveNameCell = slaveRow.insertCell();
+                            let slaveTimeCell = slaveRow.insertCell();
+                            let slaveRttCell = slaveRow.insertCell();
+                            let slaveDiffCell = slaveRow.insertCell();
+                            slaveNameCell.innerHTML = slave.name;
+                            slaveTimeCell.innerHTML = slave.time;
+                            slaveRttCell.innerHTML = slave.t_rtt;
+                            slaveDiffCell.innerHTML = slave.t_dif;
+                        });
+
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+
+            setInterval(updateTable, 1000);  // Aktualisierung alle 1 Sekunde
+        </script>
+
+    </body>
+</html>
+)";
+
+
+const char html_clients_neu[] PROGMEM = R"(
+    <body>
+        <h2>Master</h2>
+        <table id="master-table">
+            <colgroup>
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+            </colgroup>
+            <tr>
+                <th>Server</th>
+                <th>Zeitstempel</th>
+                <th>RTT</th>
+                <th></th>
+            </tr>
+            <tr id="master-data-row">
+                <td id="master-name-cell"></td>
+                <td id="master-time-cell"></td>
+                <td id="master-rtt-cell"></td>
+                <td id="master-cell-4"></td>
+            </tr>
+        </table>
+
+        <h2>Slave</h2>
+        <table id="slave-table">
+            <colgroup>
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+                <col style="width: 25%;">
+            </colgroup>
+            <tr>
+                <th>Server</th>
+                <th>Zeitstempel</th>
+                <th>RTT</th>
+                <th>Zeitdifferenz</th>
+            </tr>
+            <tr id="slave-data-row-1">
+                <td id="slave-name-cell-1"></td>
+                <td id="slave-time-cell-1"></td>
+                <td id="slave-rtt-cell-1"></td>
+                <td id="slave-diff-cell-1"></td>
+            </tr>
+            <tr id="slave-data-row-2">
+                <td id="slave-name-cell-2"></td>
+                <td id="slave-time-cell-2"></td>
+                <td id="slave-rtt-cell-2"></td>
+                <td id="slave-diff-cell-2"></td>
+            </tr>
+            <tr id="slave-data-row-3">
+                <td id="slave-name-cell-3"></td>
+                <td id="slave-time-cell-3"></td>
+                <td id="slave-rtt-cell-3"></td>
+                <td id="slave-diff-cell-3"></td>
+            </tr>
+            <tr id="slave-data-row-4">
+                <td id="slave-name-cell-4"></td>
+                <td id="slave-time-cell-4"></td>
+                <td id="slave-rtt-cell-4"></td>
+                <td id="slave-diff-cell-4"></td>
+            </tr>
+        </table>
+
+        <style>
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th, td {
+                padding: 8px;
+                text-align: center;
+                word-wrap: break-word;
+            }
+            th {
+                background-color: #000000;
+                color: #ffffff;  // Textfarbe auf Weiß ändern
+            }
+        </style>
+
+        <script>
+            function updateTable() {
+                fetch('/getntpjson')
+                    .then(response => response.json())
+                    .then(data => {
+                        let masterData = data[0].master[0];
+                        let slaveData = data[1].slave;
+
+                        // Aktualisieren Sie die Tabelle für den Master
+                        let masterNameCell = document.getElementById('master-name-cell');
+                        let masterTimeCell = document.getElementById('master-time-cell');
+                        let masterRttCell = document.getElementById('master-rtt-cell');
+                        let masterCell4 = document.getElementById('master-cell-4');
+                        masterNameCell.innerHTML = masterData.name;
+                        masterTimeCell.innerHTML = masterData.time;
+                        masterRttCell.innerHTML = masterData.t_rtt;
+                        masterCell4.innerHTML = ''; // Inhalt für 4. Spalte einfügen
+
+                        // Aktualisieren Sie die Tabelle für die Slaves
+                        let slaveNameCell1 = document.getElementById('slave-name-cell-1');
+                        let slaveTimeCell1 = document.getElementById('slave-time-cell-1');
+                        let slaveRttCell1 = document.getElementById('slave-rtt-cell-1');
+                        let slaveDiffCell1 = document.getElementById('slave-diff-cell-1');
+                        slaveNameCell1.innerHTML = slaveData[0].name;
+                        slaveTimeCell1.innerHTML = slaveData[0].time;
+                        slaveRttCell1.innerHTML = slaveData[0].t_rtt;
+                        slaveDiffCell1.innerHTML = slaveData[0].t_dif;
+
+                        let slaveNameCell2 = document.getElementById('slave-name-cell-2');
+                        let slaveTimeCell2 = document.getElementById('slave-time-cell-2');
+                        let slaveRttCell2 = document.getElementById('slave-rtt-cell-2');
+                        let slaveDiffCell2 = document.getElementById('slave-diff-cell-2');
+                        slaveNameCell2.innerHTML = slaveData[1].name;
+                        slaveTimeCell2.innerHTML = slaveData[1].time;
+                        slaveRttCell2.innerHTML = slaveData[1].t_rtt;
+                        slaveDiffCell2.innerHTML = slaveData[1].t_dif;
+
+                        let slaveNameCell3 = document.getElementById('slave-name-cell-3');
+                        let slaveTimeCell3 = document.getElementById('slave-time-cell-3');
+                        let slaveRttCell3 = document.getElementById('slave-rtt-cell-3');
+                        let slaveDiffCell3 = document.getElementById('slave-diff-cell-3');
+                        slaveNameCell3.innerHTML = slaveData[2].name;
+                        slaveTimeCell3.innerHTML = slaveData[2].time;
+                        slaveRttCell3.innerHTML = slaveData[2].t_rtt;
+                        slaveDiffCell3.innerHTML = slaveData[2].t_dif;
+
+                        let slaveNameCell4 = document.getElementById('slave-name-cell-4');
+                        let slaveTimeCell4 = document.getElementById('slave-time-cell-4');
+                        let slaveRttCell4 = document.getElementById('slave-rtt-cell-4');
+                        let slaveDiffCell4 = document.getElementById('slave-diff-cell-4');
+                        slaveNameCell4.innerHTML = slaveData[3].name;
+                        slaveTimeCell4.innerHTML = slaveData[3].time;
+                        slaveRttCell4.innerHTML = slaveData[3].t_rtt;
+                        slaveDiffCell4.innerHTML = slaveData[3].t_dif;
+
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+
+            setInterval(updateTable, 1000);  // Aktualisierung alle 1 Sekunde
+        </script>
+
+    </body>
+</html>
+)";
+
 
 
 WiFiManager wm;
-WiFiManagerParameter title; // global param ( for non blocking w params )
-WiFiManagerParameter lineBreak; // global param ( for non blocking w params )
-WiFiManagerParameter tu_berlin_ntp_server; // global param ( for non blocking w params )
-WiFiManagerParameter tu_dresden_ntp_server; // global param ( for non blocking w params )
-WiFiManagerParameter t_online_ntp_server; // global param ( for non blocking w params )
-WiFiManagerParameter custom_0_ntp_server; // global param ( for non blocking w params )
-
-const char* checkbox_unchecked = "type=\"checkbox\"";
-const char* checkbox_checked   = "type=\"checkbox\" checked";
-
-// wifimanager can run in a blocking mode or a non blocking mode
-// Be sure to know how to process loops with no delay() if using non blocking
-bool wm_nonblocking = true; // change to true to use non blocking
-
-char* getParam(const char* name) {
-    if (wm.server->hasArg(name)) {
-        String value = wm.server->arg(name);
-        if (value.length() > 0) {
-            char* param = new char[value.length() + 1];
-            strcpy(param, value.c_str());
-            return param;
-        } else {
-            return nullptr;
-        }
-    } else {
-        return nullptr;
-    }
-}
-
-void saveParamCallback() {
-    static char lost_ips[3][16] = { "", "", "" };
-    uint8_t lost_cnt = 0;
-
-    static bool preSave = true;
-    preSave ? Serial.println("[CALLBACK] savePreParamCallback fired") : Serial.println("[CALLBACK] saveParamCallback fired");
-
-    for (uint8_t i = 0; i < wm.getParametersCount(); i++) {
-        const char* name = wm.getParameters()[i]->getID();
-        if (name) {
-            const char* param = getParam(name);
-            if (param) {
-                Serial.println(String(i) + " was checked");
-                Serial.print("PARAM[" + String(name) + "]: ");
-                Serial.println(param);
-
-                // Hier NTP-Client-Objekte erstellen
-            } else if (i != 5) {
-                if (preSave) {
-                    const char* value = wm.getParameters()[i]->getValue();
-                    int length = wm.getParameters()[i]->getValueLength();
-                    Serial.println(String(i) + " was nullptr");
-                    Serial.println("val: " + String(value));
-                    Serial.println("len: " + String(length));
-
-                    strncpy(lost_ips[lost_cnt], value, sizeof(lost_ips[lost_cnt]) - 1);
-
-                    lost_cnt < 3 ? lost_cnt++ : lost_cnt = lost_cnt;
-                } else {
-                    Serial.println(i);
-                    const char* value = lost_ips[lost_cnt];
-                    wm.getParameters()[i]->setValue(value, strlen(value));
-
-                    lost_ips[lost_cnt][0] = '\0';
-
-                    lost_cnt < 3 ? lost_cnt++ : lost_cnt = lost_cnt;
-                }
-            }
-        } else {
-            Serial.println(String(i) + " has no id");
-        }
-        Serial.println();
-    }
-
-    Serial.println("Array Inhalt:");
-    for (uint8_t i = 0; i < 3; i++) {
-        Serial.println(lost_ips[i]);
-    }
-    Serial.println();
-
-    preSave = !preSave;
-}
-
-
-const char *logHTMLTags = R"(
-    <html>
-        <body>%s</body>
-        <script>
-            function updateLog() {
-                location.reload();
-                setTimeout(updateLog, 1000);
-            }
-           updateLog();
-        </script>
-    </html>
-)";
 
 bool tu_berlin = false;
-bool tu_dresden = false;
+bool cloudflare = false;
 bool t_online = false;
 
 void handleNtpSettingsRoute(void){
@@ -198,95 +352,100 @@ void handleNtpSettingsRoute(void){
     wm.server->sendContent_P(html_client_settings_body_start);
 
     tu_berlin ? wm.server->sendContent_P(html_tu_berlin_checked) : wm.server->sendContent_P(html_tu_berlin_unchecked);
-    tu_dresden ? wm.server->sendContent_P(html_tu_dresden_checked) : wm.server->sendContent_P(html_tu_dresden_unchecked);
+    cloudflare ? wm.server->sendContent_P(html_cloudflare_checked) : wm.server->sendContent_P(html_cloudflare_unchecked);
     t_online ? wm.server->sendContent_P(html_t_online_checked) : wm.server->sendContent_P(html_t_online_unchecked);
     
     wm.server->sendContent_P(html_custom);
-
     wm.server->sendContent_P(html_client_settings_body_end);
 }
 
-void handleNtpClientsRoute(void){
-    Serial.println("[HTTP] handle NTP clients route");
-    wm.server->send(200, "text/html", logHTMLTags);
-}
 
 void handleSaveNtpSettings(void) {
-    tu_berlin = false;
-    tu_dresden = false;
-    tu_berlin = false;
-
-
     Serial.println("[HTTP] handle NTP clients save settings: start");
     wm.server->sendHeader("Content-Type", "text/html");
     wm.server->sendContent_P(html_header);
     wm.server->sendContent_P(html_client_settings_param_saved);
 
-    if (wm.server->hasArg("tu_berlin_ip")) {
-        Serial.println("\tTU Berlin was checked");
-        tu_berlin = true;
-        NTPClient("TU Berlin", wm.server->arg("tu_berlin_ip").c_str(), TYPE::MASTER);
+    if (wm.server->hasArg("tu_berlin_ip") && (! tu_berlin)) {
+        NTPClient* ntpClient = new NTPClient("TU Berlin", wm.server->arg("tu_berlin_ip").c_str(), TYPE::SLAVE);
+        if (ntpClient->getIsClient()) {
+            ntpClient->addMember();
+            tu_berlin = true;
+        }
+    }
+    else if (! wm.server->hasArg("tu_berlin_ip") && tu_berlin) {
+        NTPClient::removeSlave("TU Berlin");
+        tu_berlin = false;
+    }  
+    if (wm.server->hasArg("cloudflare_ip") && (! cloudflare)) {
+        Serial.println("[HTTP] Cloudflare was checked");
+        NTPClient* ntpClient = new NTPClient("Cloudflare", wm.server->arg("cloudflare_ip").c_str(), TYPE::SLAVE);
+        if (ntpClient->getIsClient()) {
+            ntpClient->addMember();
+            cloudflare = true;
+        }
+    }
+    else if (! wm.server->hasArg("cloudflare_ip") && cloudflare) {
+        NTPClient::removeSlave("Cloudflare");
+        cloudflare = false;
     } 
-    if (wm.server->hasArg("tu_dresden_ip")) {
-        Serial.println("\tTU Dresden was checked");
-        tu_dresden = true;
-        NTPClient("TU Dresden", wm.server->arg("tu_dresden_ip").c_str(), TYPE::MASTER);
-    } 
-    if (wm.server->hasArg("t_online_ip")) {
-        Serial.println("\tT-Online was checked");
-        t_online = true;
-        NTPClient("T-Online", wm.server->arg("t_online_ip").c_str(), TYPE::MASTER);
+    if (wm.server->hasArg("t_online_ip") && (! t_online)) {
+        Serial.println("[HTTP] T-Online was checked");
+        NTPClient* ntpClient = new NTPClient("T-Online", wm.server->arg("t_online_ip").c_str(), TYPE::SLAVE);
+        if (ntpClient->getIsClient()) {
+            ntpClient->addMember();
+            t_online = true;
+        }
+    }
+    else if (! wm.server->hasArg("t_online_ip") && t_online) {
+        NTPClient::removeSlave("T-Online");
+        t_online = false;
     } 
     if (wm.server->hasArg("custom_ntp_ip")) {
         if (wm.server->arg("custom_ntp_ip").length() > 0) {
-            Serial.println("\tCustom was checked");
-            NTPClient(
-                wm.server->arg("custom_ntp_name").c_str(), 
-                wm.server->arg("custom_ntp_ip").c_str(), 
-                TYPE::SLAVE, 
-                wm.server->arg("custom_ntp_port").length() > 0 ? static_cast<uint16_t>(strtoul(wm.server->arg("custom_ntp_port").c_str(), nullptr, 10)) : 123);
+            Serial.println("[HTTP] Custom was checked");
+            String     name = wm.server->arg("custom_ntp_name");
+            String     ip   = wm.server->arg("custom_ntp_ip");
+            String port_str = wm.server->arg("custom_ntp_port");
+            uint16_t   port = port_str.length() > 0 ? static_cast<uint16_t>(port_str.toDouble()) : 123;
+            NTPClient* ntpClient = new NTPClient(name, ip, TYPE::MASTER, port);
+            if (ntpClient->getIsClient()) {
+                NTPClient::removeMaster();
+                ntpClient->addMember();
+            }
         }
     }
-
 
     Serial.println("[HTTP] handle NTP clients save settings: end");
     Serial.println();
 }
 
+void handleNtpClientsRoute(void) {
+    Serial.println("[HTTP] handle NTP clients route");
+
+    String html = String(html_header) + String(html_clients_neu);
+    wm.server->send(200, "text/html", html);
+}
+
+void handleGetNtpJson() {
+    String json = NTPClient::toJSON();
+    wm.server->send(200, "application/json", json);
+}
+
+
 void bindServerCallback(){
     wm.server->on("/ntpsettings", handleNtpSettingsRoute);
-    wm.server->on("/ntpclients", HTTP_GET, handleNtpClientsRoute);
     wm.server->on("/saventpsettings", handleSaveNtpSettings);
+    wm.server->on("/ntpclients", HTTP_GET, handleNtpClientsRoute);
+    wm.server->on("/getntpjson", HTTP_GET, handleGetNtpJson);
 }
 
 void wifiBegin(void) {
     WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
     Serial.println("\n Starting Wifi AP...");
 
-    const char* title_str = "<br/><label style='font-weight: bold; font-size: 25px;'>NTP Server Auswahl</label><br/>";
-    const char* lineBreak_str = "<br/><br />";
-    const char* tu_berlin_ip    = "130.149.7.7";
-    const char* tu_dresden_ip   = "141.76.32.160";
-    const char* t_online_ip     = "194.25.134.196";
-
-    new (&title) WiFiManagerParameter (title_str);
-    new (&tu_berlin_ntp_server) WiFiManagerParameter("tu_berlin_ntp_server", "TU Berlin", tu_berlin_ip, strlen(tu_berlin_ip), checkbox_unchecked, WFM_LABEL_AFTER);      // custom html input for tu berlin ntp server
-    new (&tu_dresden_ntp_server) WiFiManagerParameter("tu_dresden_ntp_server", "TU Dresden", tu_dresden_ip, strlen(tu_dresden_ip), checkbox_unchecked, WFM_LABEL_AFTER);    // custom html input for tu dresden ntp server
-    new (&t_online_ntp_server) WiFiManagerParameter("t_online_ntp_server", "T-Online", t_online_ip, strlen(t_online_ip),checkbox_unchecked, WFM_LABEL_AFTER);        // custom html input for t-online ntp server
-    new (&lineBreak) WiFiManagerParameter (lineBreak_str);
-    new (&custom_0_ntp_server) WiFiManagerParameter("custom_0_ntp_server", "NTP Server IP:", "", 15, "pattern='\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}'");
-    
-    wm.addParameter(&title);
-    wm.addParameter(&tu_berlin_ntp_server);    
-    wm.addParameter(&tu_dresden_ntp_server);
-    wm.addParameter(&t_online_ntp_server);
-    wm.addParameter(&lineBreak);
-    wm.addParameter(&custom_0_ntp_server);
-
-    //wm.setPreSaveParamsCallback(saveParamCallback);
-    //wm.setSaveParamsCallback(saveParamCallback);
-
     wm.setWebServerCallback(bindServerCallback);
+
     // set custom html menu content , inside menu item "custom", see setMenu()
     const char* menuhtml = "\
         <form action='/ntpsettings' method='get'><button>NTP Settings</button></form><br/>\n\
@@ -296,14 +455,11 @@ void wifiBegin(void) {
 
     // custom menu via array or vector
     //std::vector<const char *> menu = {"wifi","info","param","sep","restart","erase","exit"};
-    std::vector<const char *> menu = {"wifi","info","param","sep","custom", "sep","restart","erase","exit"};
+    std::vector<const char *> menu = {"wifi","info","sep","custom", "sep","restart","erase","exit"};
     wm.setMenu(menu);
 
     wm.setTitle("NTP Client - Settings");
     wm.setHostname("NTPclient");
-
-    // set country to germany
-    //wm.setCountry("DE"); -> doesn't work for ESP32
 
     // set dark theme
     wm.setClass("invert");
@@ -316,25 +472,24 @@ void wifiBegin(void) {
     bool res = wm.autoConnect(apName,apPass);      // start password protected accesspoint
 
   if(!res) {
-    Serial.println("Failed to connect or hit timeout!");
+    Serial.println("[VERBINDUNG] Es konnte keine Verbindung vergestellt werden!");
     delay(500);
     ESP.restart();
   } 
   else {
-    Serial.println("Connected to Wifi.");
+    Serial.println("[VERBINDUNG] Mit dem Netzwerk verbungen.");
   }
     wm.setWebPortalClientCheck(true);
     wm.startWebPortal();
-    Serial.println("Webportal is running...");
+    Serial.println("Webportal läuft...");
 }
 
 void wifiProcess(void) {
-    //if (wm_nonblocking) wm.process();
     wm.process();
 }
 
 void wifiCleanup(bool eraseSPIFF) {
-    Serial.println("Erasing Config and restarting...");
+    Serial.println("Lösche Konfiguration und starte neu...");
     delay(1000);
     if ( eraseSPIFF) {
         //clean FS, for testing
@@ -343,12 +498,4 @@ void wifiCleanup(bool eraseSPIFF) {
 
     wm.resetSettings();
     ESP.restart();
-}
-
-int wifiGetParamCounter(void) {
-    return wm.getParametersCount();
-}
-
-const char* wifiGetParamValue(uint8_t paramNum) {
-    return wm.getParametersCount() > 0 ? wm.getParameters()[paramNum]->getValue() : nullptr;
 }

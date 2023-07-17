@@ -18,5 +18,3 @@
     void        wifiBegin(void);
     void        wifiProcess(void);
     void        wifiCleanup(bool eraseSPIFF = true);
-    int         wifiGetParamCounter(void);
-    const char* wifiGetParamValue(uint8_t paramNum);

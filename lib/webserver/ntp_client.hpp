@@ -18,6 +18,7 @@
 
 
 #define NTP_TIMESTAMP_DELTA 2208988800ULL
+
 enum class TYPE {
     MASTER,
     SLAVE
@@ -25,44 +26,49 @@ enum class TYPE {
 
 class NTPClient {
 private:
-    const char* _serverName;
-    const char* _serverAddress;
+    String      _serverName;
+    String      _serverAddress;
     TYPE        _type;
     uint16_t    _serverPort;
+
     int         _sockfd;
-    uint64_t    _timestamp;
-    uint64_t    _timestampDif[3];
     bool        _isClient = false; 
-
-    const   uint8_t     _clientsCountMax = 20;
-    static  uint16_t    _clientsCount;
-
+    bool        _init = true;
+    uint64_t    _timestamp;
+    int64_t     _timestampDif;
+    uint64_t    _timestampRtt;
 
     bool init(void);
-    void sendNTPRequest(void);
-    void receiveNTPResponse(void);
+    bool sendNTPRequest(void);
+    bool receiveNTPResponse(void);
+    void extractTimestamp(const uint8_t* packetBuffer, int offset = 40);
     
     //bool    setIsClient(bool isClient);
 public:
-    static  std::vector<NTPClient> masters;
-    static  std::vector<NTPClient> slaves;
-    
-    NTPClient(const char* serverName, const char* serverAddress, TYPE type, uint16_t serverPort = 123);
+    NTPClient(const String& serverName, const String& serverAddress, TYPE type, uint16_t serverPort = 123);
     ~NTPClient();
 
+    static  std::vector<NTPClient*> masters;
+    static  std::vector<NTPClient*> slaves;
+
+    /*      GETTER      */
     bool    getIsClient(void);
-    uint8_t getClientsCount(TYPE type);
-    void    getTimestamp(void);
-
-    void    setTimestamp(const uint8_t* packetBuffer, int offset = 40);
+    uint8_t getClientsCount(void);
     
-    void    closeSocket(void);
-    String  timeToString(void);
+    /*      SETTER      */
+    bool    setTimestamp(void);
+    bool    setTimestampRtt(void);
+    bool    setTimestampDifSlave(void);
     
-    static String toJSONmaster(void);
-    static String toJSONslave(void);
-
-
+    /*      PUBLIC METHODS      */
+    void        closeSocket(void);
+    void        addMember(void);
+    static void removeMaster(void);
+    static void removeSlave(String serverName);
+    String      timeToString(uint64_t time);
+    String      timeToString(int64_t time);
+    
+    static String toJSON(void);
 };
 
 #endif
