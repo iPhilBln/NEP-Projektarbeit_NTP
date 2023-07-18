@@ -21,7 +21,7 @@ bool NTPClient::init(void) {
     // Socket erstellen
     if (_sockfd > -1) return true;
 
-    Serial.println("Socket wird erstellt für :" + _serverName); 
+    Serial.println("Socket wird erstellt für: " + _serverName); 
 
     _sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (_sockfd < 0) {
@@ -243,12 +243,12 @@ String NTPClient::timeToString(int64_t time) {
     time < 0 ? negativ = true : negativ = false;
     if (negativ) time *= -1;
 
-    int32_t seconds_helper = static_cast<int32_t>((time >> 32) & 0xFFFFFFFF);
-    int32_t fraction = static_cast<int32_t>(time & 0xFFFFFFFF);
+    uint32_t seconds_helper = (time >> 32) & 0xFFFFFFFF;
+    uint32_t fraction = time & 0xFFFFFFFF;
 
-    int32_t hours = (seconds_helper / 3600) % 24;  // Stunden im 24-Stunden-Format
-    int32_t minutes = (seconds_helper / 60) % 60;
-    int32_t seconds = seconds_helper % 60;
+    uint32_t hours = (seconds_helper / 3600) % 24;  // Stunden im 24-Stunden-Format
+    uint32_t minutes = (seconds_helper / 60) % 60;
+    uint32_t seconds = seconds_helper % 60;
 
     double fractionInSeconds = static_cast<double>(fraction) / 0xFFFFFFFF;
 
@@ -256,12 +256,13 @@ String NTPClient::timeToString(int64_t time) {
     double microseconds = fractionInSeconds * 1000000.0;
     double picoseconds = fractionInSeconds * 1000000000.0;
 
-    int32_t millisecondsInt = static_cast<int32_t>(milliseconds);
-    int32_t microsecondsInt = static_cast<int32_t>(microseconds) % 1000;
-    int32_t picosecondsInt = static_cast<int32_t>(picoseconds) % 1000;
+    uint32_t millisecondsUint = static_cast<uint32_t>(milliseconds);
+    uint32_t microsecondsUint = static_cast<uint32_t>(microseconds) % 1000;
+    uint32_t picosecondsUint = static_cast<uint32_t>(picoseconds) % 1000;
+
 
     char buffer[100];
-    std::sprintf(buffer, "%02d:%02d:%02d.%03d:%03d:%03d", hours, minutes, seconds, millisecondsInt, microsecondsInt, picosecondsInt);
+    std::sprintf(buffer, "%02d:%02d:%02d.%03d:%03d:%03d", hours, minutes, seconds, millisecondsUint, microsecondsUint, picosecondsUint);
     return negativ ? "-" + String(buffer) : String(buffer);
 }
 

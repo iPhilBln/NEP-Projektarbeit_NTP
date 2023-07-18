@@ -26,16 +26,12 @@ void loop() {
 
   if (millis() - timestamp > 1 * 1000) {
     timestamp = millis();
-    bool complete = false;
     for(NTPClient* slave : NTPClient::slaves) {
-      if (! (complete = slave->setTimestampDifSlave())) break;
+      slave->setTimestampDifSlave();
     }
-    if (complete) {
-      Serial.println(NTPClient::toJSON());
-      Serial.println();
-    }
+    Serial.println(NTPClient::toJSON());
+    Serial.println();
   }
-
 
   if (digitalRead(button) == LOW) {
     delay(500);
