@@ -85,13 +85,13 @@ bool NTPClient::receiveNTPResponse(void) {
     const uint32_t NTP_PACKET_SIZE = 48;
     uint8_t packetBuffer[NTP_PACKET_SIZE]{};
 
-    // Timeout-Wert in Sekunden (5 Sekunden)
-    int timeoutSeconds = 5;
+    // Timeout-Wert in Sekunden (500 Millisekunden)
+    int timeoutUSeconds = 500 * 1000;
 
     // Socket-Option für das Timeout festlegen
     timeval timeout;
-    timeout.tv_sec = timeoutSeconds;
-    timeout.tv_usec = 0;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = timeoutUSeconds;
     if (setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
         Serial.println("\tFehler beim Festlegen des Sende-Timeouts.");
         closeSocket();
