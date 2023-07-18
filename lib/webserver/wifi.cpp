@@ -30,6 +30,7 @@ void handleSaveNtpSettings(void) {
     wm.server->sendContent_P(html_client_settings_param_saved);
 
     if (wm.server->hasArg("tu_berlin_ip") && (! tu_berlin)) {
+        Serial.println("[HTTP] TU Berlin was checked");
         NTPClient* ntpClient = new NTPClient("TU Berlin", wm.server->arg("tu_berlin_ip").c_str(), TYPE::SLAVE);
         if (ntpClient->getIsClient()) {
             ntpClient->addMember();
