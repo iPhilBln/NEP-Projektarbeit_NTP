@@ -19,7 +19,10 @@ NTPClient::~NTPClient() {
 /*      PRIVATE METHODS      */
 bool NTPClient::init(void) {         
     // Socket erstellen
-    //_init ? Serial.println("\tSocket erstellen für :" + _serverName) : Serial.println("Serveranfrage: " + String(_serverName));
+    if (_sockfd > -1) return true;
+
+    Serial.println("Socket wird erstellt für :" + _serverName); 
+
     _sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (_sockfd < 0) {
         Serial.println("\tFehler beim Erstellen des Sockets.");
@@ -33,6 +36,7 @@ bool NTPClient::init(void) {
     
     if (inet_pton(AF_INET, _serverAddress.c_str(), &(serverAddr.sin_addr)) <= 0) {
         Serial.println("\tUngültige Server-Adresse.");
+        closeSocket();
         return false;
     }
     if(_init) Serial.println("\tIP-Adresse: " + String(_serverAddress));
@@ -40,6 +44,7 @@ bool NTPClient::init(void) {
     // Socket mit Server verbinden (normalerweise nicht notwendig für UDP, bei NTP scheinbar schon)
     if (connect(_sockfd, reinterpret_cast<const sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0) {
         Serial.println("\tVerbindung zum Server fehlgeschlagen.");
+        closeSocket();
         return false;
     }
     if(_init) Serial.println("\tSocketnr.: " + String(_sockfd));
@@ -67,6 +72,7 @@ bool NTPClient::sendNTPRequest(void) {
 
     if (sendto(_sockfd, packetBuffer, NTP_PACKET_SIZE, 0, reinterpret_cast<const sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0) {
         Serial.println("\tFehler beim Senden des NTP-Pakets.");
+        closeSocket();
         return false;
     }
     else {
@@ -88,6 +94,7 @@ bool NTPClient::receiveNTPResponse(void) {
     timeout.tv_usec = 0;
     if (setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
         Serial.println("\tFehler beim Festlegen des Sende-Timeouts.");
+        closeSocket();
         return false;
     }
 
@@ -101,6 +108,7 @@ bool NTPClient::receiveNTPResponse(void) {
         } else {
             Serial.println("\tFehler beim Empfangen der NTP-Antwort.");
         }
+        closeSocket();
         return false;
     }
     else {
@@ -147,16 +155,16 @@ bool NTPClient::setTimestamp(void) {
     if (complete) complete = init();
     if (complete) complete = sendNTPRequest();
     if (complete) complete = receiveNTPResponse();
-    closeSocket();
+    //closeSocket();
     return complete;
 }
 
 bool NTPClient::setTimestampRtt(void) {
-        if (! setTimestamp()) return false;
-        uint64_t timestampStart = _timestamp;
-        if (! setTimestamp()) return false;
-        _timestampRtt = _timestamp - timestampStart;
-        return true;
+    if (! setTimestamp()) return false;
+    uint64_t timestampStart = _timestamp;
+    if (! setTimestamp()) return false;
+    _timestampRtt = _timestamp - timestampStart;
+    return true;
 }
 
 bool NTPClient::setTimestampDifSlave(void) {
@@ -165,16 +173,19 @@ bool NTPClient::setTimestampDifSlave(void) {
     NTPClient* master = masters.front();
     
     if (!master->setTimestampRtt()) return false;
-    //if (!setTimestamp()) return false;
-    //uint64_t timestampSlave = _timestamp;
     if (!setTimestampRtt()) return false;
 
-    _timestampDif  = static_cast<int64_t>(_timestamp);
-    _timestampDif -= static_cast<int64_t>(_timestampRtt);
-    _timestampDif -= static_cast<int64_t>(_timestampRtt);
-    _timestampDif -= static_cast<int64_t>(master->_timestampRtt / 2);
-    _timestampDif -= static_cast<int64_t>(master->_timestamp); 
-    _timestampDif -= static_cast<int64_t>(master->_timestampRtt / 2);
+    uint64_t rttMaster_05 = master->_timestampRtt >> 1; // rtt halbieren
+    uint64_t rttSlave_05  = _timestampRtt >> 1;         // rtt halbieren
+
+    uint64_t timestampMaster  = master->_timestamp; 
+             timestampMaster -= rttMaster_05;
+    uint64_t timestampSlave   = _timestamp;
+             timestampSlave  -= 3 * rttSlave_05;
+             timestampSlave  -= rttMaster_05;
+
+    _timestampDif = static_cast<int64_t>(timestampSlave - timestampMaster); 
+
     return true;
 }
 
@@ -183,6 +194,7 @@ bool NTPClient::setTimestampDifSlave(void) {
 
 void NTPClient::closeSocket() {
     close(_sockfd);
+    _sockfd = -1;
 }
 
 void NTPClient::addMember(void) {
