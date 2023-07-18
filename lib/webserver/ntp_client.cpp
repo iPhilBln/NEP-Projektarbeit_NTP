@@ -55,15 +55,37 @@ bool NTPClient::sendNTPRequest(void) {
     const uint32_t NTP_PACKET_SIZE = 48;
     uint8_t packetBuffer[NTP_PACKET_SIZE]{};
 
+    uint8_t li = 0b11000000; // LI -> alarm condition 
+    uint8_t vn = 0b00100000; // VN -> version nr. 4
+    uint8_t mode = 0b00000011; // MODE -> Client
+
+
     // NTP-Paket vorbereiten
-    packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+    packetBuffer[0] = li | vn | mode;   // LI, Version, Mode
     packetBuffer[1] = 0;            // Stratum
     packetBuffer[2] = 6;            // Polling Interval
     packetBuffer[3] = 0xEC;         // Precision
-    packetBuffer[12] = 49;
-    packetBuffer[13] = 0x4E;
-    packetBuffer[14] = 49;
-    packetBuffer[15] = 52;
+
+    for (uint8_t i = 4; i < NTP_PACKET_SIZE; i++) {
+        packetBuffer[i] = 0;
+    }
+
+/*
+    Der folgende Codeabschnitt wurde nicht getestet
+
+
+    // Referenzzeitstempel - letzte aktualisierung
+    for (uint8_t i = 0; i < (64 % 8); i++) {
+        packetBuffer[i+4] = _timestamp >> (64 - 8 * (i + 1)) & 0xFF;
+    }
+
+    uint32_t timestamp_offset = static_cast<uint32_t>(_timestampe >> 32) + 1; // 1 Sekunde Offset, da jede Sekunde abgefragt wird -> stimmt so aber nicht für Master
+
+    // Originalzeitstempel - aktuelle Systemzeit
+    for (uint8_t i = 0; i < (64 % 8); i++) {
+        packetBuffer[i+12] = _timestamp >> (64 - 8 * (i + 1)) & 0xFF;
+    }
+*/
 
     // NTP-Paket senden
     sockaddr_in serverAddr{};
